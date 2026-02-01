@@ -7,7 +7,7 @@ def scan_with_noise_floor():
     
     # Configuration
     sdr.sample_rate = 2.4e6
-    sdr.gain = 'auto'
+    sdr.gain = 15
     
     # We'll monitor the TETRA uplink band in two steps
     scan_frequencies = [381.25e6, 383.75e6]
@@ -32,7 +32,7 @@ def scan_with_noise_floor():
                 current_time = time.strftime("%H:%M:%S")
                 
                 if max_pwr > threshold:
-                    status = f"*** PING DETECTED *** ({max_pwr:.1f} dB)"
+                    status = f"*** PING DETECTED ***"
                 else:
                     status = f"Noise (Floor: {avg_noise:.1f} dB)"
                 
