@@ -3,14 +3,14 @@ from rtlsdr import RtlSdr
 import time
 
 # --- Configuration ---
-start_freq = 380_000_000  # MHz range start
-end_freq = 385_000_000    # MHz range end
-sample_rate = 2.4e6       # Hz — max reliable for RTL-SDR
-gain = 40                 # dB
-signal_threshold = 5.0    # Adjust based on noise floor
-fft_size = 2048           # FFT resolution (higher = finer detail, slower)
-samples_per_read = 128 * 1024  # Samples per read (~50ms window)
-sweep_dwell_time = 3.0    # Seconds to stay on each window before moving
+start_freq = 380_000_000 
+end_freq = 385_000_000   
+sample_rate = 2.4e6      
+gain = 40                
+fft_size = 2048          
+samples_per_read = 128 * 1024  
+sweep_dwell_time = 3.0   
+fixed_threshold = -20.0                 # A higher number is less sensitive; a lower number is more sensitive.
 
 # --- SDR Init ---
 try:
@@ -22,10 +22,8 @@ except Exception as e:
     print(f"RTL-SDR not found: {e}")
     exit()
 
-# --- Main Monitor ---
-print(f"Starting wideband monitor from {start_freq/1e6:.1f} to {end_freq/1e6:.1f} MHz")
+print(f"Starting wideband monitor with FIXED THRESHOLD: {fixed_threshold} dB")
 
-# Compute step to cover full range in chunks of sample_rate
 center_frequencies = np.arange(start_freq + sample_rate/2, end_freq, sample_rate)
 
 while True:
@@ -33,20 +31,18 @@ while True:
         for center_freq in center_frequencies:
             sdr.center_freq = center_freq
             start_time = time.time()
-            print(f"\nMonitoring window {center_freq/1e6:.3f} MHz ±{sample_rate/2/1e6:.1f} MHz")
-
+            
             while time.time() - start_time < sweep_dwell_time:
                 samples = sdr.read_samples(samples_per_read)
+                
+                # Convert to Power Spectrum
                 spectrum = np.fft.fftshift(np.fft.fft(samples, fft_size))
                 power_spectrum = 20 * np.log10(np.abs(spectrum))
 
-                # Noise floor / dynamic threshold
-                noise_floor = np.median(power_spectrum)
-                threshold = noise_floor + signal_threshold
-
-                # Peak detection
+                # Simple Fixed Comparison
                 peak_power = np.max(power_spectrum)
-                if peak_power > threshold:
+                
+                if peak_power > fixed_threshold:
                     idx = np.argmax(power_spectrum)
                     freqs = np.linspace(center_freq - sample_rate/2,
                                         center_freq + sample_rate/2,
@@ -55,9 +51,11 @@ while True:
 
                     print(f"Ping: {peak_freq/1e6:.3f} MHz | {peak_power:.1f} dB")
 
+    except KeyboardInterrupt:
+        print("\nStopping scanner...")
+        break
     except Exception as e:
         print(f"Error: {e}")
-        sdr.close()
         break
 
 sdr.close()
