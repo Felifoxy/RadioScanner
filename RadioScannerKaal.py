@@ -6,7 +6,7 @@ import time
 start_freq = 380_000_000 
 end_freq = 385_000_000   
 sample_rate = 2.4e6      
-gain = 40                
+gain = 17                
 fft_size = 2048          
 samples_per_read = 128 * 1024  
 sweep_dwell_time = 3.0   
