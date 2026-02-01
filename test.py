@@ -11,7 +11,7 @@ def scan_with_noise_floor():
     
     # We'll monitor the TETRA uplink band in two steps
     scan_frequencies = [381.25e6, 383.75e6]
-    threshold = -35  # Trigger level for a "Ping"
+    threshold = 10  # Trigger level for a "Ping"
 
     print(f"{'Time':<10} | {'Freq (MHz)':<12} | {'Peak (dB)':<10} | {'Status'}")
     print("-" * 55)
