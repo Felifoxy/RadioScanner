@@ -7,7 +7,7 @@ def scan_with_noise_floor():
     
     # Configuration
     sdr.sample_rate = 2.4e6
-    sdr.gain = 15
+    sdr.gain = 40
     
     # We'll monitor the TETRA uplink band in two steps
     scan_frequencies = [381.25e6, 383.75e6]
