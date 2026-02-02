@@ -7,7 +7,7 @@ def scan_surgical():
     
     # --- AGGRESSIVE REDUCTION ---
     sdr.sample_rate = 2.048e6 
-    sdr.gain = 12.5  # Very low gain to stop the clipping at -7dB
+    sdr.gain = 'auto'
     
     scan_frequencies = [381.25e6, 383.75e6]
     
