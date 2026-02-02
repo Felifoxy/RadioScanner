@@ -2,57 +2,48 @@ import numpy as np
 from rtlsdr import RtlSdr
 import time
 
-def scan_robust():
+def scan_tetra_final():
     sdr = RtlSdr()
+    sdr.sample_rate = 2.048e6
+    sdr.gain = 15.0 # Increased slightly now that noise is gone
+    
+    # TETRA Uplink 380-385 MHz
+    # We use 4 centers to cover the band with 2MHz chunks
+    scan_freqs = [381.0e6, 383.0e6, 384.0e6]
+    
+    print("SCANNING FOR C2000 UPLINK...")
+    print("Baseline looks good (~ -23dB). Waiting for burst...")
+    print("-" * 60)
 
     try:
-        # Hardware setup
-        sdr.sample_rate = 1.024e6  # Lower rate = less stress on Pi 4
-        sdr.center_freq = 382.5e6
-        sdr.gain = 0.0             # Keep gain at minimum for now
-        
-        # C2000 Uplink band segments
-        scan_frequencies = [380.5e6, 381.5e6, 382.5e6, 383.5e6, 384.5e6]
-        
-        print(f"{'Time':<10} | {'Freq (MHz)':<10} | {'Peak (dB)':<10} | {'Status'}")
-        print("-" * 55)
-
         while True:
-            for freq in scan_frequencies:
-                try:
-                    sdr.center_freq = freq
-                    # Short pause to let the R820T PLL lock
-                    time.sleep(0.1) 
-                    
-                    samples = sdr.read_samples(128 * 1024)
-                    
-                    # Manual DC Offset removal (removes the spike in the middle)
-                    samples = samples - np.mean(samples)
-                    
-                    # Calculate PSD
-                    psd = 10 * np.log10(np.abs(np.fft.fft(samples))**2 / len(samples))
-                    max_pwr = np.max(psd)
-                    
-                    current_time = time.strftime("%H:%M:%S")
-                    
-                    # Logic: With 0 gain, anything above -10dB is a real signal
-                    if max_pwr > -10:
-                        status = "!!! UPLINK PING !!!"
-                    elif max_pwr > -20:
-                        status = "Weak Signal"
-                    else:
-                        status = "Clear"
-                    
-                    print(f"{current_time:<10} | {freq/1e6:<10.2f} | {max_pwr:<10.1f} | {status}")
+            for freq in scan_freqs:
+                sdr.center_freq = freq
+                # Small sleep for Pi stability
+                time.sleep(0.02)
                 
-                except Exception as e:
-                    print(f"Error tuning to {freq/1e6}MHz: {e}")
-                    continue
+                # Capture fewer samples so we can loop FASTER
+                samples = sdr.read_samples(32 * 1024)
+                
+                # Remove the center DC spike (essential for RTL-SDR)
+                samples = samples - np.mean(samples)
+                
+                psd = 10 * np.log10(np.abs(np.fft.fft(samples))**2 / len(samples))
+                max_pwr = np.max(psd)
+                
+                # Trigger: If signal is 10dB louder than your quiet baseline (-23)
+                if max_pwr > -12:
+                    # Find exactly which frequency in the 2MHz window is active
+                    freq_axis = np.fft.fftfreq(len(samples), 1/sdr.sample_rate)
+                    peak_idx = np.argmax(psd)
+                    exact_freq = (freq + freq_axis[peak_idx]) / 1e6
                     
+                    print(f"{time.strftime('%H:%M:%S')} | DETECTED | {exact_freq:.4f} MHz | Pwr: {max_pwr:.1f} dB")
+            
     except KeyboardInterrupt:
         print("\nStopping...")
     finally:
         sdr.close()
 
 if __name__ == "__main__":
-    scan_robust()
+    scan_tetra_final()
